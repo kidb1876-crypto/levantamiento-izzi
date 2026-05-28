@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SML - Supervisor de Levantamiento (IZZI)</title>
+    <!-- Estilos de Leaflet para el Mapa -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <style>
+        :root {
+            --izzi-pink: #E5007D; /* Color institucional IZZI */
+            --dark-bg: #1A1A1A;
+            --light-card: #FFFFFF;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #F5F7FA;
+            color: #333;
+        }
+        header {
+            background-color: var(--dark-bg);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 4px solid var(--izzi-pink);
+            font-weight: bold;
+        }
+        .container {
+            padding: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .card {
+            background: var(--light-card);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h3 { margin-top: 0; color: var(--dark-bg); border-left: 4px solid var(--izzi-pink); padding-left: 8px; }
+        label { display: block; margin: 10px 0 5px; font-weight: bold; font-size: 14px; }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #CCC;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .geo-btn {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        .submit-btn {
+            background-color: var(--izzi-pink);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+        }
+        .export-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        #map { height: 200px; border-radius: 8px; margin-top: 10px; }
+        .coordenadas { background: #E9ECEF; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+    <header>📱 IZZI - LEVANTAMIENTO DE RED FTTH/HFC</header>
+
+    <div class="container">
+        <!-- SECCIÓN DE GEORREFERENCIA -->
+        <div class="card">
+            <h3>📍 Georreferenciación</h3>
+            <button class="geo-btn" onclick="obtenerUbicacion()">Capturar Coordenadas GPS</button>
+            <div id="geo-display" class="coordenadas" style="margin-top:10px;">
+                Latitud: <span id="lat">--</span><br>
+                Longitud: <span id="lon">--</span><br>
+                Altitud: <span id="alt">--</span> mts
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <!-- SECCIÓN DE INFRAESTRUCTURA -->
+        <div class="card">
+            <h3>🪵 Postería e Infraestructura</h3>
+            
+            <label for="tipo_poste">Tipo de Postería</label>
+            <select id="tipo_poste">
+                <option value="Madera 12m">Madera (12 metros)</option>
+                <option value="Concreto 9m">Concreto (9 metros)</option>
+                <option value="Concreto 12m">Concreto (12 metros)</option>
+                <option value="Metal de Paso">Metal de Paso</option>
+                <option value="Propiedad Privada / Fachada">Propiedad Privada / Fachada</option>
+            </select>
+
+            <label for="distancia">Distancia al poste anterior (Metros)</label>
+            <input type="number" id="distancia" placeholder="Ej. 35.5" step="0.1">
+        </div>
+
+        <!-- SECCIÓN DE SIMBOLOGÍA/ELEMENTOS IZZI -->
+        <div class="card">
+            <h3>🔌 Elementos de Red (Simbología IZZI)</h3>
+
+            <label for="tipo_tap">Tipo de TAP (Atenuación)</label>
+            <select id="tipo_tap">
+                <option value="Ninguno">Ninguno (Solo paso)</option>
+                <option value="TAP 2W 4dB">TAP 2 Vías - 4 dB</option>
+                <option value="TAP 4W 8dB">TAP 4 Vías - 8 dB</option>
+                <option value="TAP 4W 11dB">TAP 4 Vías - 11 dB</option>
+                <option value="TAP 8W 14dB">TAP 8 Vías - 14 dB</option>
+                <option value="TAP 8W 17dB">TAP 8 Vías - 17 dB</option>
+            </select>
+
+            <label for="nodo">Código de Nodo asignado</label>
+            <input type="text" id="nodo" placeholder="Ej. AGS-042" style="text-transform: uppercase;">
+
+            <label for="distribuidor">Tipo de Distribuidor / Cierre de Empalme</label>
+            <select id="distribuidor">
+                <option value="Ninguno">Ninguno</option>
+                <option value="CEO 24 Fibras">CEO (Cierre de Empalme Óptico) 24F</option>
+                <option value="CEO 48 Fibras">CEO 48F</option>
+                <option value="Amplificador Lineal">Amplificador HFC (Lineal)</option>
+                <option value="Fuente de Poder">Fuente de Poder Alfa</option>
+            </select>
+        </div>
+
+        <!-- BOTONES DE ACCIÓN -->
+        <button class="submit-btn" onclick="guardarRegistro()">💾 Guardar Punto en Celular</button>
+        <button class="export-btn" onclick="exportarAExcel()">📥 Exportar Reporte a Excel (CSV)</button>
+    </div>
+
+    <!-- Scripts de Leaflet y Lógica de la App -->
+    <script src="https://unpkg.com"></script>
+    <script>
+        let map = L.map('map').setView([21.8853, -102.2916], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let marker;
+
+        function obtenerUbicacion() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    const alt = position.coords.altitude ? position.coords.altitude.toFixed(2) : "No disponible";
+
+                    document.getElementById('lat').innerText = lat.toFixed(6);
+                    document.getElementById('lon').innerText = lon.toFixed(6);
+                    document.getElementById('alt').innerText = alt;
+
+                    map.setView([lat, lon], 17);
+                    if (marker) map.removeLayer(marker);
+                    marker = L.marker([lat, lon]).addTo(map).bindPopup("Poste Actual").openPopup();
+                }, function(error) {
+                    alert("Error al obtener GPS: Asegúrate de dar permisos de ubicación.");
+                }, { enableHighAccuracy: true });
+            } else {
+                alert("Tu dispositivo no soporta geolocalización.");
+            }
+        }
+
+        function guardarRegistro() {
+            const registro = {
+                id: new Date().toLocaleString(),
+                lat: document.getElementById('lat').innerText,
+                lon: document.getElementById('lon').innerText,
+                alt: document.getElementById('alt').innerText,
+                tipo_poste: document.getElementById('tipo_poste').value,
+                distancia_anterior: document.getElementById('distancia').value || "0",
+                tipo_tap: document.getElementById('tipo_tap').value,
+                nodo: document.getElementById('nodo').value || "S/N",
+                distribuidor: document.getElementById('distribuidor').value
+            };
+
+            if(registro.lat === "--") {
+                alert("❌ Error: Debes capturar las coordenadas GPS antes de guardar.");
+                return;
+            }
+
+            let BaseDatosLocales = JSON.parse(localStorage.getItem('levantamientos_izzi')) || [];
+            BaseDatosLocales.push(registro);
+            localStorage.setItem('levantamientos_izzi', JSON.stringify(BaseDatosLocales));
+
+            alert("✅ Punto guardado en la memoria del equipo. Total: " + BaseDatosLocales.length);
+            
+            // Limpia la distancia para el siguiente poste
+            document.getElementById('distancia').value = "";
+        }
+
+        function exportarAExcel() {
+            let datos = JSON.parse(localStorage.getItem('levantamientos_izzi')) || [];
+            
+            if (datos.length === 0) {
+                alert("❌ No hay datos guardados para exportar.");
+                return;
+            }
+
+            // Encabezados del archivo Excel/CSV
+            let csvContent = "\uFEFF"; // BOM para que Excel detecte acentos correctamente
+            csvContent += "Fecha y Hora,Latitud,Longitud,Altitud (m),Tipo de Poste,Distancia Anterior (m),Tipo de TAP,Nodo,Distribuidor/CEO\n";
+
+            // Recorrer filas de datos
+            datos.forEach(function(row) {
+                let fila = `"${row.id}","${row.lat}","${row.lon}","${row.alt}","${row.tipo_poste}","${row.distancia_anterior}","${row.tipo_tap}","${row.nodo}","${row.distribuidor}"\n`;
+                csvContent += fila;
+            });
+
+            // Crear el archivo de descarga
+            let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            let url = URL.createObjectURL(blob);
+            let link = document.createElement("a");
+            
+            // Nombre automático con fecha del día
+            let fechaHoy = new Date().toISOString().slice(0,10);
+            
